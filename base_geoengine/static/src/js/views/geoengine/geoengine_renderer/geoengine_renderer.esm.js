@@ -9,9 +9,11 @@ import {
     mount,
     onMounted,
     onPatched,
+    onWillDestroy,
     onWillStart,
     onWillUpdateProps,
     reactive,
+    status,
     useState,
 } from "@odoo/owl";
 import {GeoengineRecord} from "../geoengine_record/geoengine_record.esm";
@@ -105,6 +107,20 @@ export class GeoengineRenderer extends Component {
             if (this.map !== undefined && !this.state.isModified) {
                 this.renderVectorLayers();
             }
+        });
+
+        onWillDestroy(() => {
+            // Release OpenLayers resources
+            if (this.map) {
+                this.overlay.setMap(null);
+                this.map.setTarget(null);
+                this.map.dispose();
+                this.map = null;
+            }
+
+            // Remove reactivity from the stores
+            this.rasterLayersStore = null;
+            this.vectorLayersStore = null;
         });
     }
 
@@ -650,6 +666,11 @@ export class GeoengineRenderer extends Component {
      * when the user changes raster layers.
      */
     onRasterLayerChanged() {
+        // Only if the component is not destroyed
+        if (status(this) === "destroyed") {
+            return;
+        }
+
         this.map
             .getLayers()
             .getArray()
@@ -671,6 +692,11 @@ export class GeoengineRenderer extends Component {
      * when the user changes vector layers.
      */
     async onVectorLayerChanged() {
+        // Only if the component is not destroyed
+        if (status(this) === "destroyed") {
+            return;
+        }
+
         await this.map
             .getLayers()
             .getArray()
